@@ -2,82 +2,62 @@ package ru.otus.cryptomvisample.features.coins
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.arkivanov.mvikotlin.extensions.coroutines.states
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
-import ru.otus.cryptomvisample.common.domain_api.ConsumeCoinsUseCase
-import ru.otus.cryptomvisample.common.domain_api.SetFavouriteCoinUseCase
-import ru.otus.cryptomvisample.common.domain_api.UnsetFavouriteCoinUseCase
+import kotlinx.coroutines.flow.stateIn
+import ru.otus.cryptomvisample.features.coins.mvi.CoinListStore
 
+/**
+ * ViewModel для экрана списка монет, адаптирующая [CoinListStore] для UI слоя.
+ *
+ * @property store Экземпляр [CoinListStore], реализующий бизнес-логику и управление состоянием.
+ */
 class CoinListViewModel(
-    private val consumeCoinsUseCase: ConsumeCoinsUseCase,
-    private val coinsStateFactory: CoinsStateFactory,
-    private val setFavouriteCoinUseCase: SetFavouriteCoinUseCase,
-    private val unsetFavouriteCoinUseCase: UnsetFavouriteCoinUseCase,
+    private val store: CoinListStore,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(CoinsScreenState())
-    val state: StateFlow<CoinsScreenState> = _state.asStateFlow()
-
-    private var fullCategories: List<CoinCategoryState> = emptyList()
-    private var highlightMovers = false
-
-    init {
-        requestCoins()
-    }
-
-    fun onHighlightMoversToggled(isChecked: Boolean) {
-        highlightMovers = isChecked
-        updateUiState()
-    }
-
-    fun onToggleFavourite(coinId: String) {
-        val isCurrentlyFavorite = fullCategories.any { category ->
-            category.coins.any { coin -> coin.id == coinId && coin.isFavourite }
-        }
-        
-        if (isCurrentlyFavorite) {
-            unsetFavouriteCoinUseCase(coinId)
-        } else {
-            setFavouriteCoinUseCase(coinId)
-        }
-    }
-
-    private fun requestCoins() {
-        consumeCoinsUseCase()
-            .map { categories ->
-                categories.map { category -> coinsStateFactory.create(category) }
-            }
-            .onEach { categoryListState ->
-                fullCategories = categoryListState
-                updateUiState()
-            }
-            .catch {
-                fullCategories = emptyList()
-                updateUiState()
-            }
-            .launchIn(viewModelScope)
-    }
-
-    private fun updateUiState() {
-        val processedCategories = fullCategories.map { category ->
-            category.copy(coins = category.coins.map { coin ->
-                coin.copy(
-                    highlight = highlightMovers && coin.isHotMover
-                )
-            })
-        }
-
-        _state.update { 
-            it.copy(
-                categories = processedCategories,
-                highlightMovers = highlightMovers
+    /**
+     * Состояние UI, получаемое из Store.
+     */
+    val state: StateFlow<CoinsScreenState> = store.states
+        .map { mviState ->
+            CoinsScreenState(
+                categories = mviState.categories,
+                highlightMovers = mviState.highlightMovers
             )
         }
+        .stateIn(
+            // Подписка на поток состояний в рамках жизненного цикла ViewModel
+            scope = viewModelScope,
+            // Поток остается активным в течение 5 секунд после отписки последнего подписчика,
+            // что позволяет пережить смену конфигурации (например, поворот экрана)
+            started = SharingStarted.WhileSubscribed(5000),
+            // Начальное состояние до получения первого значения из Store
+            initialValue = CoinsScreenState()
+        )
+
+    /**
+     * Обработка события переключения подсветки волатильных монет.
+     *
+     * @param isChecked Новое состояние переключателя.
+     */
+    fun onHighlightMoversToggled(isChecked: Boolean) {
+        store.accept(CoinListStore.Intent.ToggleHighlightMovers(isChecked))
+    }
+
+    /**
+     * Обработка события нажатия на иконку избранного.
+     *
+     * @param coinId Идентификатор выбранной монеты.
+     */
+    fun onToggleFavourite(coinId: String) {
+        store.accept(CoinListStore.Intent.ToggleFavourite(coinId))
+    }
+
+    override fun onCleared() {
+        store.dispose()
+        super.onCleared()
     }
 }

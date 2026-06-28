@@ -29,6 +29,7 @@ compose-bom = "2024.12.01"
 activity-compose = "1.9.3"
 navigation-compose = "2.8.5"
 coil-compose = "2.7.0"
+mvikotlin = "4.4.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -63,6 +64,9 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil-compose" }
+mvikotlin = { group = "com.arkivanov.mvikotlin", name = "mvikotlin", version.ref = "mvikotlin" }
+mvikotlin-main = { group = "com.arkivanov.mvikotlin", name = "mvikotlin-main", version.ref = "mvikotlin" }
+mvikotlin-coroutines = { group = "com.arkivanov.mvikotlin", name = "mvikotlin-extensions-coroutines", version.ref = "mvikotlin" }
 
 [bundles]
 network = ["okhttp", "okhttp-logging-interceptor", "retrofit", "retrofit-converter-gson"]

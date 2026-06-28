@@ -7,6 +7,8 @@ import ru.otus.common.di.FeatureScope
 import ru.otus.cryptomvisample.common.domain_api.ConsumeCoinsUseCase
 import ru.otus.cryptomvisample.common.domain_api.SetFavouriteCoinUseCase
 import ru.otus.cryptomvisample.common.domain_api.UnsetFavouriteCoinUseCase
+import com.arkivanov.mvikotlin.main.store.DefaultStoreFactory
+import ru.otus.cryptomvisample.features.coins.mvi.CoinListStoreFactory
 import javax.inject.Inject
 
 @FeatureScope
@@ -23,13 +25,16 @@ class CoinListViewModelFactory @Inject constructor(
     ): T {
         when {
             modelClass.isAssignableFrom(CoinListViewModel::class.java) -> {
-                @Suppress("UNCHECKED_CAST")
-                return CoinListViewModel(
+                val store = CoinListStoreFactory(
+                    storeFactory = DefaultStoreFactory(),
                     consumeCoinsUseCase = consumeCoinsUseCase,
                     coinsStateFactory = coinsStateFactory,
                     setFavouriteCoinUseCase = setFavouriteCoinUseCase,
-                    unsetFavouriteCoinUseCase = unsetFavouriteCoinUseCase,
-                ) as T
+                    unsetFavouriteCoinUseCase = unsetFavouriteCoinUseCase
+                ).create()
+
+                @Suppress("UNCHECKED_CAST")
+                return CoinListViewModel(store = store) as T
             }
         }
         throw IllegalArgumentException("Unknown ViewModel class")
